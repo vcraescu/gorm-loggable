@@ -95,7 +95,7 @@ func isInStringSlice(what string, where []string) bool {
 func getLoggableFieldNames(value interface{}) []string {
 	var names []string
 
-	t := reflect.TypeOf(value)
+	t := reflect.TypeOf(reflect.Indirect(reflect.ValueOf(value)).Interface())
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		value, ok := field.Tag.Lookup(loggableTag)
@@ -107,4 +107,22 @@ func getLoggableFieldNames(value interface{}) []string {
 	}
 
 	return names
+}
+
+func computeDiff(old, new interface{}) UpdateDiff {
+	ov := reflect.Indirect(reflect.ValueOf(old))
+	nv := reflect.Indirect(reflect.ValueOf(new))
+	names := getLoggableFieldNames(old)
+
+	diff := make(UpdateDiff)
+
+	for _, name := range names {
+		ofv := ov.FieldByName(name).Interface()
+		nfv := nv.FieldByName(name).Interface()
+		if ofv != nfv {
+			diff[name] = nfv
+		}
+	}
+
+	return diff
 }

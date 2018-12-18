@@ -6,21 +6,24 @@ import (
 	"fmt"
 	"github.com/jinzhu/copier"
 	"reflect"
+	"sync"
 )
 
-type identityMap map[string]interface{}
-
 type identityManager struct {
-	m identityMap
+	sync.Mutex
+	store map[string]interface{}
 }
 
 func newIdentityManager() *identityManager {
 	return &identityManager{
-		m: make(identityMap),
+		store: map[string]interface{}{},
 	}
 }
 
 func (im *identityManager) save(value, pk interface{}) {
+	im.Lock()
+	defer im.Unlock()
+
 	t := reflect.TypeOf(value)
 	newValue := reflect.New(t).Interface()
 	err := copier.Copy(&newValue, value)
@@ -28,21 +31,34 @@ func (im *identityManager) save(value, pk interface{}) {
 		panic(err)
 	}
 
-	im.m[genIdentityKey(t, pk)] = newValue
+	k := genIdentityHash(value, pk)
+	im.store[k] = newValue
 }
 
 func (im identityManager) get(value, pk interface{}) interface{} {
-	t := reflect.TypeOf(value)
-	key := genIdentityKey(t, pk)
-	m, ok := im.m[key]
+	im.Lock()
+	defer im.Unlock()
+
+	k := genIdentityHash(value, pk)
+	value, ok := im.store[k]
 	if !ok {
 		return nil
 	}
 
-	return m
+	return value
 }
 
-func genIdentityKey(t reflect.Type, pk interface{}) string {
+func (im *identityManager) diff(value, pk interface{}) UpdateDiff {
+	old := im.get(value, pk)
+	if old == nil {
+		return nil
+	}
+
+	return computeDiff(old, value)
+}
+
+func genIdentityHash(value, pk interface{}) string {
+	t := reflect.TypeOf(reflect.Indirect(reflect.ValueOf(value)).Interface())
 	key := fmt.Sprintf("%v_%s", pk, t.Name())
 	b := md5.Sum([]byte(key))
 

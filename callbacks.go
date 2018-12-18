@@ -79,7 +79,7 @@ func addUpdateRecord(scope *gorm.Scope, opts options) error {
 	}
 
 	if opts.computeDiff {
-		diff := computeUpdateDiff(scope)
+		diff := im.diff(scope.Value, scope.PrimaryKeyValue())
 		jd, err := json.Marshal(diff)
 		if err != nil {
 			return err
@@ -118,27 +118,4 @@ func addRecord(scope *gorm.Scope, action string) error {
 	}
 
 	return scope.DB().Create(cl).Error
-}
-
-func computeUpdateDiff(scope *gorm.Scope) UpdateDiff {
-	old := im.get(scope.Value, scope.PrimaryKeyValue())
-	if old == nil {
-		return nil
-	}
-
-	ov := reflect.ValueOf(old)
-	nv := reflect.Indirect(reflect.ValueOf(scope.Value))
-	names := getLoggableFieldNames(old)
-
-	diff := make(UpdateDiff)
-
-	for _, name := range names {
-		ofv := ov.FieldByName(name).Interface()
-		nfv := nv.FieldByName(name).Interface()
-		if ofv != nfv {
-			diff[name] = nfv
-		}
-	}
-
-	return diff
 }
