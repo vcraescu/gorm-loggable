@@ -31,6 +31,7 @@ func somethingToMapStringInterface(item interface{}) map[string]interface{} {
 	if item == nil {
 		return nil
 	}
+
 	switch raw := item.(type) {
 	case string:
 		return somethingToMapStringInterface([]byte(raw))
@@ -48,7 +49,6 @@ func somethingToMapStringInterface(item interface{}) map[string]interface{} {
 		}
 		return somethingToMapStringInterface(data)
 	}
-	return nil
 }
 
 var ToSnakeCase = toSomeCase("_")
@@ -92,10 +92,19 @@ func isInStringSlice(what string, where []string) bool {
 	return false
 }
 
+func indirect2(value interface{}) reflect.Value {
+	v := reflect.Indirect(reflect.ValueOf(value))
+	if v.Kind() == reflect.Ptr {
+		v = reflect.Indirect(reflect.ValueOf(value))
+	}
+
+	return v
+}
+
 func getLoggableFieldNames(value interface{}) []string {
 	var names []string
 
-	t := reflect.TypeOf(reflect.Indirect(reflect.ValueOf(value)).Interface())
+	t := reflect.TypeOf(indirect2(value))
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		value, ok := field.Tag.Lookup(loggableTag)
