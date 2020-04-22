@@ -108,6 +108,7 @@ func newChangeLog(scope *gorm.Scope, action string) (*ChangeLog, error) {
 		ObjectType: scope.GetModelStruct().ModelType.Name(),
 		RawObject:  string(rawObject),
 		RawMeta:    string(fetchChangeLogMeta(scope)),
+		RawDiff:    "{}",
 	}, nil
 }
 
